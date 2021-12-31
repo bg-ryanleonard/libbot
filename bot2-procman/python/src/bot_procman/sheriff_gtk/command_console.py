@@ -38,26 +38,42 @@ class CommandExtraData(object):
         self.printf_keep_count = [ 0, 0, 0, 0, 0, 0 ]
         self.printf_drop_count = 0
 
-class SheriffCommandConsole(gtk.ScrolledWindow):
+class SheriffCommandConsole(gtk.VBox):
     def __init__(self, _sheriff, lc):
         super(SheriffCommandConsole, self).__init__()
 
-        self.stdout_maxlines = 2000
+        self.stdout_maxlines = 4000
         self.max_kb_per_sec = 0
         self.max_chars_per_2500_ms = 0
 
         self.sheriff = _sheriff
 
         # stdout textview
-        self.stdout_textview = gtk.TextView ()
+        self.scroll_window = gtk.ScrolledWindow()
+        self.stdout_textview = gtk.TextView()
+        ## Uncomment to enable text wrapping
+        # self.stdout_textview.set_wrap_mode(gtk.WRAP_CHAR)
         self.stdout_textview.set_property ("editable", False)
-        self.sheriff_tb = self.stdout_textview.get_buffer ()
-        self.add (self.stdout_textview)
+        self.sheriff_tb = self.stdout_textview.get_buffer()
+        self.scroll_window.add(self.stdout_textview)
+        self.search_box = gtk.HBox()
+        self.search_button_prev = gtk.Button(label="Find Prev")
+        self.search_button_next = gtk.Button(label="Find Next")
+        self.search_bar = gtk.Entry()
+        self.search_box.pack_start(self.search_button_prev, False, False)
+        self.search_box.pack_start(self.search_button_next, False, False)
+        self.search_box.add(self.search_bar)
+        self.add(self.scroll_window)
+        self.pack_end(self.search_box, False, False)
+        self.text_search_start = None
+        self.search_button_prev.connect("clicked", self.find_prev, (self.stdout_textview, self.search_bar))
+        self.search_button_next.connect("clicked", self.find_next, (self.stdout_textview, self.search_bar))
 
-        stdout_adj = self.get_vadjustment ()
+        stdout_adj = self.scroll_window.get_vadjustment ()
         stdout_adj.set_data ("scrolled-to-end", 1)
         stdout_adj.connect ("changed", self.on_adj_changed)
         stdout_adj.connect ("value-changed", self.on_adj_value_changed)
+
 
         # add callback so we can add a clear option to the default right click popup
         self.stdout_textview.connect ("populate-popup", self.on_tb_populate_menu)
@@ -86,6 +102,40 @@ class SheriffCommandConsole(gtk.ScrolledWindow):
             self.sheriff_tb.get_tag_table().add(tt)
 
         self.set_output_rate_limit(DEFAULT_MAX_KB_PER_SECOND)
+
+    def find_next(self, button, input):
+        search_str = input[1].get_text()
+        text_buffer = input[0].get_buffer()
+        if self.text_search_start is None:
+            self.text_search_start = text_buffer.get_start_iter()
+        result = self.text_search_start.forward_search(search_str, 0, None)
+        if result:
+            self.text_search_start = result[1]
+            text_buffer.select_range(result[0], result[1])
+            my_mark = text_buffer.create_mark("index", result[0], left_gravity=False)
+            input[0].scroll_to_mark(my_mark, 0)
+            input[0].show()
+            input[0].grab_focus()
+            del my_mark
+        else:
+            self.text_search_start = text_buffer.get_start_iter()
+
+    def find_prev(self, button, input):
+        search_str = input[1].get_text()
+        text_buffer = input[0].get_buffer()
+        if self.text_search_start is None:
+            self.text_search_start = text_buffer.get_start_iter()
+        result = self.text_search_start.backward_search(search_str, 0, None)
+        if result:
+            self.text_search_start = result[0]
+            text_buffer.select_range(result[0], result[1])
+            my_mark = text_buffer.create_mark("index", result[0], left_gravity=False)
+            input[0].scroll_to_mark(my_mark, 0)
+            input[0].show()
+            input[0].grab_focus()
+            del my_mark
+        else:
+            self.text_search_start = text_buffer.get_end_iter()
 
     def get_background_color(self):
         return self.base_color

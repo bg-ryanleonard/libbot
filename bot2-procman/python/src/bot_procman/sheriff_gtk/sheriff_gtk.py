@@ -188,7 +188,7 @@ class SheriffGtk(object):
 
         # stdout textview
         self.cmd_console = cc.SheriffCommandConsole(self.sheriff, self.lc)
-        vpane.add2(self.cmd_console)
+        vpane.add(self.cmd_console)
 
         # status bar
         self.statusbar = self.builder.get_object("statusbar")
