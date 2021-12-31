@@ -106,9 +106,15 @@ class SheriffCommandConsole(gtk.VBox):
     def find_next(self, button, input):
         search_str = input[1].get_text()
         text_buffer = input[0].get_buffer()
+
         if self.text_search_start is None:
             self.text_search_start = text_buffer.get_start_iter()
-        result = self.text_search_start.forward_search(search_str, 0, None)
+        try:
+            result = self.text_search_start.forward_search(search_str, 0, None)
+        except Exception as e:
+            print("Exception: {}".format(e))
+            self.text_search_start = text_buffer.get_start_iter()
+
         if result:
             self.text_search_start = result[1]
             text_buffer.select_range(result[0], result[1])
